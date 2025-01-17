@@ -188,12 +188,8 @@ Tomcat.</p>
   </property>
   <property name="sendfileSize">
         If the connector used supports sendfile, this represents the minimal
-        file size in KB for which sendfile will be used. Use a negative value
+        file size in KiB for which sendfile will be used. Use a negative value
         to always disable sendfile. [48]
-  </property>
-  <property name="useAcceptRanges">
-        If true, the Accept-Ranges header will be set when appropriate for the
-        response. [true]
   </property>
   <property name="showServerInfo">
         Should server information be presented in the response sent to clients
@@ -206,9 +202,14 @@ Tomcat.</p>
         Should the server list all directories before all files. [false]
   </property>
   <property name="allowPartialPut">
-        Should the server treat an HTTP PUT request with a Range header as a
-        partial PUT? Note that RFC 7233 clarified that Range headers are only
-        valid for GET requests. [true]
+        Should the server treat an HTTP PUT request with a Content-Range header
+        as a partial PUT? Note that while RFC 7231 clarified that such a PUT
+        with a Content-Range header field is a bad request, RFC 9110
+        (which obsoletes RFC 7231) now allows partial PUT. [true]
+  </property>
+  <property name="directoryRedirectStatusCode">
+        When a directory redirect (trailing slash missing) is made, use this as
+        the the HTTP response code. [302]
   </property>
 </properties>
 </section>

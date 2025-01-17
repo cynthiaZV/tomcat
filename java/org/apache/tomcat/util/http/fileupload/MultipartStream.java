@@ -26,7 +26,6 @@ import org.apache.tomcat.util.http.fileupload.impl.FileUploadIOException;
 import org.apache.tomcat.util.http.fileupload.util.Closeable;
 import org.apache.tomcat.util.http.fileupload.util.Streams;
 
-
 /**
  * <p> Low level API for processing file uploads.
  *
@@ -284,7 +283,7 @@ public class MultipartStream {
      *
      * @throws IllegalArgumentException If the buffer size is too small
      *
-     * @since 1.3.1
+     * @since FileUpload 1.3.1
      */
     public MultipartStream(final InputStream input,
             final byte[] boundary,
@@ -401,7 +400,7 @@ public class MultipartStream {
     public boolean readBoundary()
             throws FileUploadIOException, MalformedStreamException {
         final byte[] marker = new byte[2];
-        boolean nextChunk;
+        final boolean nextChunk;
 
         head += boundaryLength;
         try {

@@ -23,6 +23,7 @@ import java.sql.SQLWarning;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A base delegating implementation of {@link Statement}.
@@ -61,7 +62,6 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
     }
 
     /**
-     *
      * @throws SQLException
      *             thrown by the delegating statement.
      * @since 2.4.0 made public, was protected in 2.3.0.
@@ -94,7 +94,7 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
 
     protected void checkOpen() throws SQLException {
         if (isClosed()) {
-            throw new SQLException(this.getClass().getName() + " with address: \"" + this.toString() + "\" is closed.");
+            throw new SQLException(this.getClass().getName() + " with address: \"" + toString() + "\" is closed.");
         }
     }
 
@@ -137,35 +137,24 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
             // ResultSet's when it is closed.
             // FIXME The PreparedStatement we're wrapping should handle this for us.
             // See bug 17301 for what could happen when ResultSets are closed twice.
-            final List<AbandonedTrace> resultSetList = getTrace();
-            if (resultSetList != null) {
-                final ResultSet[] resultSets = resultSetList.toArray(Utils.EMPTY_RESULT_SET_ARRAY);
-                for (final ResultSet resultSet : resultSets) {
-                    if (resultSet != null) {
-                        try {
-                            resultSet.close();
-                        } catch (final Exception e) {
-                            if (connection != null) {
-                                // Does not rethrow e.
-                                connection.handleExceptionNoThrow(e);
-                            }
-                            thrownList.add(e);
-                        }
-                    }
-                }
-                clearTrace();
-            }
-            if (statement != null) {
-                try {
-                    statement.close();
-                } catch (final Exception e) {
+            final List<AbandonedTrace> traceList = getTrace();
+            if (traceList != null) {
+                traceList.forEach(trace -> trace.close(e -> {
                     if (connection != null) {
                         // Does not rethrow e.
                         connection.handleExceptionNoThrow(e);
                     }
                     thrownList.add(e);
-                }
+                }));
+                clearTrace();
             }
+            Utils.close(statement, e -> {
+                if (connection != null) {
+                    // Does not rethrow e.
+                    connection.handleExceptionNoThrow(e);
+                }
+                thrownList.add(e);
+            });
         } finally {
             closed = true;
             statement = null;
@@ -380,7 +369,7 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
         }
     }
 
-    @SuppressWarnings("deprecation") // Need Commons DBCP to address this
+    @SuppressWarnings("removal") // Need Commons DBCP to address this
     @Override
     protected void finalize() throws Throwable {
         // This is required because of statement pooling. The poolable
@@ -460,19 +449,18 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
      * a "genuine" {@link Statement}.
      * </p>
      *
-     * @return The innermost delegate.
-     *
+     * @return The innermost delegate, may return null.
      * @see #getDelegate
      */
     public Statement getInnermostDelegate() {
-        Statement s = statement;
-        while (s instanceof DelegatingStatement) {
-            s = ((DelegatingStatement) s).getDelegate();
-            if (this == s) {
+        Statement stmt = statement;
+        while (stmt instanceof DelegatingStatement) {
+            stmt = ((DelegatingStatement) stmt).getDelegate();
+            if (this == stmt) {
                 return null;
             }
         }
-        return s;
+        return stmt;
     }
 
     /**
@@ -677,7 +665,6 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
     }
 
     /**
-     *
      * @throws SQLException
      *             thrown by the delegating statement.
      * @since 2.4.0 made public, was protected in 2.3.0.
@@ -808,7 +795,7 @@ public class DelegatingStatement extends AbandonedTrace implements Statement {
      */
     @Override
     public synchronized String toString() {
-        return statement == null ? "NULL" : statement.toString();
+        return Objects.toString(statement, "NULL");
     }
 
     @Override

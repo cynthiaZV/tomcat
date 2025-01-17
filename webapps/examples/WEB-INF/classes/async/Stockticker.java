@@ -38,7 +38,7 @@ public class Stockticker implements Runnable {
 
         public synchronized void stop() {
             // On context stop this can be called multiple times.
-            // NO-OP is the ticker thread is not set
+            // NO-OP if the ticker thread is not set
             // (i.e. stop() has already completed)
             if (ticker == null) {
                 return;
@@ -118,9 +118,9 @@ public class Stockticker implements Runnable {
         }
 
 
-    public static interface TickListener {
-        public void tick(Stock stock);
-        public void shutdown();
+    public interface TickListener {
+        void tick(Stock stock);
+        void shutdown();
     }
 
     public static final class Stock implements Cloneable {

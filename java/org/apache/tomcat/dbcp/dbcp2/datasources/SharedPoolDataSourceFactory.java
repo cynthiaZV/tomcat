@@ -20,12 +20,20 @@ import javax.naming.RefAddr;
 import javax.naming.Reference;
 
 /**
- * A JNDI ObjectFactory which creates <code>SharedPoolDataSource</code>s
+ * A JNDI ObjectFactory which creates {@code SharedPoolDataSource}s
  *
  * @since 2.0
  */
 public class SharedPoolDataSourceFactory extends InstanceKeyDataSourceFactory {
+
     private static final String SHARED_POOL_CLASSNAME = SharedPoolDataSource.class.getName();
+
+    /**
+     * Constructs a new instance.
+     */
+    public SharedPoolDataSourceFactory() {
+        // empty
+    }
 
     @Override
     protected InstanceKeyDataSource getNewInstance(final Reference ref) {

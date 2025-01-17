@@ -41,7 +41,7 @@ public class PoolingDriver implements Driver {
      *
      * @since 2.0
      */
-    private class PoolGuardConnectionWrapper extends DelegatingConnection<Connection> {
+    private final class PoolGuardConnectionWrapper extends DelegatingConnection<Connection> {
 
         private final ObjectPool<? extends Connection> pool;
 
@@ -79,29 +79,39 @@ public class PoolingDriver implements Driver {
     static {
         try {
             DriverManager.registerDriver(new PoolingDriver());
-        } catch (final Exception e) {
-            // ignore
+        } catch (final Exception ignored) {
+            // Ignored
         }
     }
 
     /** The map of registered pools. */
     protected static final HashMap<String, ObjectPool<? extends Connection>> pools = new HashMap<>();
 
-    /** My URL prefix */
+    /**
+     * The Apache Commons connection string prefix {@value}.
+     */
     public static final String URL_PREFIX = "jdbc:apache:commons:dbcp:";
 
+    /**
+     * The String length of {@link #URL_PREFIX}.
+     */
     protected static final int URL_PREFIX_LEN = URL_PREFIX.length();
 
-    // version numbers
+    /**
+     * Major version number.
+     */
     protected static final int MAJOR_VERSION = 1;
 
+    /**
+     * Minor version number.
+     */
     protected static final int MINOR_VERSION = 0;
 
     /** Controls access to the underlying connection */
     private final boolean accessToUnderlyingConnectionAllowed;
 
     /**
-     * Constructs a new driver with <code>accessToUnderlyingConnectionAllowed</code> enabled.
+     * Constructs a new driver with {@code accessToUnderlyingConnectionAllowed} enabled.
      */
     public PoolingDriver() {
         this(true);
@@ -146,7 +156,6 @@ public class PoolingDriver implements Driver {
     public Connection connect(final String url, final Properties info) throws SQLException {
         if (acceptsURL(url)) {
             final ObjectPool<? extends Connection> pool = getConnectionPool(url.substring(URL_PREFIX_LEN));
-
             try {
                 final Connection conn = pool.borrowObject();
                 if (conn == null) {
@@ -215,7 +224,7 @@ public class PoolingDriver implements Driver {
      * @param conn
      *            connection to invalidate
      * @throws SQLException
-     *             if the connection is not a <code>PoolGuardConnectionWrapper</code> or an error occurs invalidating
+     *             if the connection is not a {@code PoolGuardConnectionWrapper} or an error occurs invalidating
      *             the connection
      */
     public void invalidateConnection(final Connection conn) throws SQLException {
@@ -227,8 +236,8 @@ public class PoolingDriver implements Driver {
         final ObjectPool<Connection> pool = (ObjectPool<Connection>) pgconn.pool;
         try {
             pool.invalidateObject(pgconn.getDelegateInternal());
-        } catch (final Exception e) {
-            // Ignore.
+        } catch (final Exception ignored) {
+            // Ignored.
         }
     }
 
@@ -240,6 +249,7 @@ public class PoolingDriver implements Driver {
     protected boolean isAccessToUnderlyingConnectionAllowed() {
         return accessToUnderlyingConnectionAllowed;
     }
+
     @Override
     public boolean jdbcCompliant() {
         return true;

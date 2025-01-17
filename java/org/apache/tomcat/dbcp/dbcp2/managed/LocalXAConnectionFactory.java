@@ -60,12 +60,19 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
         private boolean originalAutoCommit; // @GuardedBy("this")
 
         /**
-         * Construct a new instance for a given connection.
+         * Constructs a new instance for a given connection.
          *
          * @param localTransaction A connection.
          */
         public LocalXAResource(final Connection localTransaction) {
             this.connection = localTransaction;
+        }
+
+        private Xid checkCurrentXid() throws XAException {
+            if (this.currentXid == null) {
+                throw new XAException("There is no current transaction");
+            }
+            return currentXid;
         }
 
         /**
@@ -80,11 +87,8 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
          */
         @Override
         public synchronized void commit(final Xid xid, final boolean flag) throws XAException {
-            Objects.requireNonNull(xid, "xid is null");
-            if (this.currentXid == null) {
-                throw new XAException("There is no current transaction");
-            }
-            if (!this.currentXid.equals(xid)) {
+            Objects.requireNonNull(xid, "xid");
+            if (!checkCurrentXid().equals(xid)) {
                 throw new XAException("Invalid Xid: expected " + this.currentXid + ", but was " + xid);
             }
 
@@ -103,8 +107,8 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
             } finally {
                 try {
                     connection.setAutoCommit(originalAutoCommit);
-                } catch (final SQLException e) {
-                    // ignore
+                } catch (final SQLException ignored) {
+                    // ignored
                 }
                 this.currentXid = null;
             }
@@ -122,8 +126,8 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
          */
         @Override
         public synchronized void end(final Xid xid, final int flag) throws XAException {
-            Objects.requireNonNull(xid, "xid is null");
-            if (!this.currentXid.equals(xid)) {
+            Objects.requireNonNull(xid, "xid");
+            if (!checkCurrentXid().equals(xid)) {
                 throw new XAException("Invalid Xid: expected " + this.currentXid + ", but was " + xid);
             }
 
@@ -197,18 +201,18 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
                     connection.setAutoCommit(originalAutoCommit);
 
                     // tell the transaction manager we are read only
-                    return XAResource.XA_RDONLY;
+                    return XA_RDONLY;
                 }
             } catch (final SQLException ignored) {
                 // no big deal
             }
 
             // this is a local (one phase) only connection, so we can't prepare
-            return XAResource.XA_OK;
+            return XA_OK;
         }
 
         /**
-         * Always returns a zero length Xid array. The LocalXAConnectionFactory can not support recovery, so no xids
+         * Always returns a zero length Xid array. The LocalXAConnectionFactory cannot support recovery, so no xids
          * will ever be found.
          *
          * @param flag
@@ -230,8 +234,8 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
          */
         @Override
         public synchronized void rollback(final Xid xid) throws XAException {
-            Objects.requireNonNull(xid, "xid is null");
-            if (!this.currentXid.equals(xid)) {
+            Objects.requireNonNull(xid, "xid");
+            if (!checkCurrentXid().equals(xid)) {
                 throw new XAException("Invalid Xid: expected " + this.currentXid + ", but was " + xid);
             }
 
@@ -242,8 +246,8 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
             } finally {
                 try {
                     connection.setAutoCommit(originalAutoCommit);
-                } catch (final SQLException e) {
-                    // Ignore.
+                } catch (final SQLException ignored) {
+                    // Ignored.
                 }
                 this.currentXid = null;
             }
@@ -262,7 +266,7 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
         }
 
         /**
-         * Signals that a the connection has been enrolled in a transaction. This method saves off the current auto
+         * Signals that a connection has been enrolled in a transaction. This method saves off the current auto
          * commit flag, and then disables auto commit. The original auto commit setting is restored when the transaction
          * completes.
          *
@@ -276,7 +280,7 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
          */
         @Override
         public synchronized void start(final Xid xid, final int flag) throws XAException {
-            if (flag == XAResource.TMNOFLAGS) {
+            if (flag == TMNOFLAGS) {
                 // first time in this transaction
 
                 // make sure we aren't already in another tx
@@ -284,7 +288,7 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
                     throw new XAException("Already enlisted in another transaction with xid " + xid);
                 }
 
-                // save off the current auto commit flag so it can be restored after the transaction completes
+                // save off the current auto commit flag, so it can be restored after the transaction completes
                 try {
                     originalAutoCommit = connection.getAutoCommit();
                 } catch (final SQLException ignored) {
@@ -301,7 +305,7 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
                 }
 
                 this.currentXid = xid;
-            } else if (flag == XAResource.TMRESUME) {
+            } else if (flag == TMRESUME) {
                 if (!xid.equals(this.currentXid)) {
                     throw new XAException("Attempting to resume in different transaction: expected " + this.currentXid
                             + ", but was " + xid);
@@ -344,8 +348,8 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
     public LocalXAConnectionFactory(final TransactionManager transactionManager,
             final TransactionSynchronizationRegistry transactionSynchronizationRegistry,
             final ConnectionFactory connectionFactory) {
-        Objects.requireNonNull(transactionManager, "transactionManager is null");
-        Objects.requireNonNull(connectionFactory, "connectionFactory is null");
+        Objects.requireNonNull(transactionManager, "transactionManager");
+        Objects.requireNonNull(connectionFactory, "connectionFactory");
         this.transactionRegistry = new TransactionRegistry(transactionManager, transactionSynchronizationRegistry);
         this.connectionFactory = connectionFactory;
     }
@@ -358,13 +362,15 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
         // create a XAResource to manage the connection during XA transactions
         final XAResource xaResource = new LocalXAResource(connection);
 
-        // register the xa resource for the connection
+        // register the XA resource for the connection
         transactionRegistry.registerConnection(connection, xaResource);
 
         return connection;
     }
 
     /**
+     * Gets the connection factory.
+     *
      * @return The connection factory.
      * @since 2.6.0
      */
@@ -372,6 +378,11 @@ public class LocalXAConnectionFactory implements XAConnectionFactory {
         return connectionFactory;
     }
 
+    /**
+     * Gets the transaction registry.
+     *
+     * @return The transaction registry.
+     */
     @Override
     public TransactionRegistry getTransactionRegistry() {
         return transactionRegistry;

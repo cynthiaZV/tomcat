@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.tomcat.util.http.fileupload.impl.FileCountLimitExceededException;
 import org.apache.tomcat.util.http.fileupload.impl.FileItemIteratorImpl;
 import org.apache.tomcat.util.http.fileupload.impl.FileUploadIOException;
 import org.apache.tomcat.util.http.fileupload.impl.IOFileUploadException;
@@ -104,6 +105,12 @@ public abstract class FileUploadBase {
     private long fileSizeMax = -1;
 
     /**
+     * The maximum permitted number of files that may be uploaded in a single
+     * request. A value of -1 indicates no maximum.
+     */
+    private long fileCountMax = -1;
+
+    /**
      * The content encoding to use when reading part headers.
      */
     private String headerEncoding;
@@ -180,6 +187,24 @@ public abstract class FileUploadBase {
     }
 
     /**
+     * Returns the maximum number of files allowed in a single request.
+     *
+     * @return The maximum number of files allowed in a single request.
+     */
+    public long getFileCountMax() {
+        return fileCountMax;
+    }
+
+    /**
+     * Sets the maximum number of files allowed per request.
+     *
+     * @param fileCountMax The new limit. {@code -1} means no limit.
+     */
+    public void setFileCountMax(final long fileCountMax) {
+        this.fileCountMax = fileCountMax;
+    }
+
+    /**
      * Retrieves the character encoding used when reading the headers of an
      * individual part. When not specified, or {@code null}, the request
      * encoding is used. If that is also not specified, or {@code null},
@@ -253,6 +278,10 @@ public abstract class FileUploadBase {
                     "No FileItemFactory has been set.");
             final byte[] buffer = new byte[Streams.DEFAULT_BUFFER_SIZE];
             while (iter.hasNext()) {
+                if (items.size() == fileCountMax) {
+                    // The next item will exceed the limit.
+                    throw new FileCountLimitExceededException(ATTACHMENT, getFileCountMax());
+                }
                 final FileItemStream item = iter.next();
                 // Don't use getName() here to prevent an InvalidFileNameException.
                 final String fileName = item.getName();
@@ -309,7 +338,7 @@ public abstract class FileUploadBase {
         if (boundaryStr == null) {
             return null;
         }
-        byte[] boundary;
+        final byte[] boundary;
         boundary = boundaryStr.getBytes(StandardCharsets.ISO_8859_1);
         return boundary;
     }
@@ -478,8 +507,7 @@ public abstract class FileUploadBase {
             return;
         }
         final String headerName = header.substring(0, colonOffset).trim();
-        final String headerValue =
-            header.substring(colonOffset + 1).trim();
+        final String headerValue = header.substring(colonOffset + 1).trim();
         headers.addHeader(headerName, headerValue);
     }
 

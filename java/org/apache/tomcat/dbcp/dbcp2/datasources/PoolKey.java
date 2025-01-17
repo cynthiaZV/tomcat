@@ -20,9 +20,11 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
+ * The key type for entries in a {@link PerUserPoolDataSource}.
+ *
  * @since 2.0
  */
-class PoolKey implements Serializable {
+final class PoolKey implements Serializable {
     private static final long serialVersionUID = 2252771047542484533L;
 
     private final String dataSourceName;
